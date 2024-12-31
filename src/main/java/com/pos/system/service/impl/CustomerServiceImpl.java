@@ -27,7 +27,13 @@ public class CustomerServiceImpl implements CustomerService {
     public void createCustomer(CustomerDto dto) {
         UUID uuid = UUID.randomUUID();
         long customerId = uuid.getMostSignificantBits();
-        Customer customer = new Customer(customerId, dto.getEmail(), dto.getName(), dto.getContact(), dto.getSalary(),null);
+        Customer customer = new Customer();
+        //customerId, dto.getEmail(), dto.getName(), dto.getContact(), dto.getSalary(),null
+        customer.setId(customerId);
+        customer.setEmail(dto.getEmail());
+        customer.setName(dto.getName());
+        customer.setContact(dto.getContact());
+        customer.setSalary(dto.getSalary());
         customerRepo.save(customer);
     }
 
@@ -55,7 +61,8 @@ public class CustomerServiceImpl implements CustomerService {
         List<Customer> allUsers = customerRepo.findAll();
         List<CustomerDto> dtos = new ArrayList<>();
         allUsers.forEach(e -> {
-            dtos.add(new CustomerDto(
+            dtos.add(
+                    new CustomerDto(
                     e.getId(),
                     e.getName(),
                     e.getEmail(),

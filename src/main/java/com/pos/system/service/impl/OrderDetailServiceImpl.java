@@ -1,94 +1,103 @@
 package com.pos.system.service.impl;
 
+import com.pos.system.dto.ItemDetailDto;
+import com.pos.system.dto.OrderDetailDto;
+import com.pos.system.entity.*;
+import com.pos.system.exception.ResourceNotFoundException;
+import com.pos.system.repo.*;
 import com.pos.system.service.OrderDetailService;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@Transactional
+@RequiredArgsConstructor
 public class OrderDetailServiceImpl implements OrderDetailService {
+    private final OrderDetailRepo orderDetailRepo;
+    private final UserRepo userRepo;
+    private final CustomerRepo customerRepo;
+    private final ItemDetailRepo itemDetailRepo;
+    private final ProductRepo productRepo;
+    @Override
+    public void createOrder(OrderDetailDto dto) {
+        //Set<ProductDetail> selectedProducts = dto.getProductDetail();
+        User user = userRepo.findById(dto.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-//    OrderDetailDao dao = DaoFactory.getInstance().getDao(DaoType.ORDER_DETAIL);
-//    ItemDetailDao detailDao = DaoFactory.getInstance().getDao(DaoType.ITEM_DETAIL);
-//    ProductDetailDao productDetailDao = DaoFactory.getInstance().getDao(DaoType.PRODUCT_DETAIL);
-//
-//    @Override
-//    public boolean makeOrder(OrderDetailDto d) throws SQLException {
-//        Connection connection = null;
-//        try {
-//            connection = DbConnection.getInstance().getConnection();
-//            connection.setAutoCommit(false);
-//            if (saveOrder(d)) {
-//                boolean isItemsSaved = saveItemDetails(d.getItemDetailDto(), d.getCode());
-//                if (isItemsSaved) {
-//                    connection.commit();
-//                    return true;
-//                } else {
-//                    connection.rollback();
-//                    return false;
-//                }
-//            } else {
-//                connection.rollback();
-//                return false;
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        } finally {
-//            connection.setAutoCommit(true);
-//        }
-//        return false;
-//    }
-//
-//    public OrderDetailDto find(Integer orderId) throws SQLException, ClassNotFoundException {
-//        OrderDetail orderDetail = dao.find(orderId);
-//        if (orderDetail!=null) {
-//            return new OrderDetailDto(
-//                    orderDetail.getCode(),
-//                    orderDetail.getIssuedDate(),
-//                    orderDetail.getTotalCost(),
-//                    orderDetail.getCustomerEmail(),
-//                    orderDetail.getDiscount(),
-//                    orderDetail.getOperatorEmail()
-//            );
-//        }
-//        return null;
-//    }
-//    public List<OrderDetailDto> findAll() throws SQLException, ClassNotFoundException{
-//        List<OrderDetailDto> dtos = new ArrayList<>();
-//
-//        for (OrderDetail o:dao.findAll()) {
-//            dtos.add(new OrderDetailDto(
-//                    o.getCode(),
-//                    o.getIssuedDate(),
-//                    o.getTotalCost(),
-//                    o.getCustomerEmail(),
-//                    o.getDiscount(),
-//                    o.getOperatorEmail()
-//            ));
-//        }
-//        return dtos;
-//    }
-//
-//    private boolean saveOrder(OrderDetailDto dto) throws SQLException, ClassNotFoundException {
-//        return dao.save(new OrderDetail(dto.getCode(), dto.getIssuedDate(), dto.getTotalCost(),dto.getCustomerEmail(), dto.getDiscount(), dto.getOperatorEmail()));
-//    }
-//
-//    private boolean saveItemDetails(List<ItemDetailDto> list, int orderCode) throws SQLException, ClassNotFoundException {
-//        for (ItemDetailDto dto : list) {
-//            boolean isItemSaved = detailDao.save(
-//                    new ItemDetail(dto.getDetailCode(), orderCode, dto.getQty(), dto.getDiscount(), dto.getAmount())
-//            );
-//            if (isItemSaved) {
-//                if (!updateQty(dto.getDetailCode(), dto.getQty())) {
-//                    return false;
-//                }
-//            } else {
-//                return false;
-//            }
-//        }
-//        return true;
-//    }
-//
-//    public boolean updateQty(String productCode, int qty) throws SQLException, ClassNotFoundException {
-//        return productDetailDao.manageQty(productCode, qty);
-//    }
-//    public boolean deleteOrder(Integer orderId) throws SQLException, ClassNotFoundException {
-//        return dao.delete(orderId);
-//    }
+        Customer customer = customerRepo.findById(dto.getCustomer())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+        UUID uuid = UUID.randomUUID();
+        long orderId = uuid.getMostSignificantBits();
+
+        OrderDetail orderDetail = OrderDetail.builder()
+                .orderId(String.valueOf(orderId))
+                .totalCost(dto.getTotalCost())
+                .discount(dto.getDiscount())
+                .operatorEmail(dto.getOperatorEmail())
+                .user(user)
+                .customer(customer)
+                .build();
+        orderDetailRepo.save(orderDetail);
+
+        dto.getOrderItems().forEach(itemDto -> {
+                    // Find product for each item
+                    Product product = productRepo.findByCode(itemDto.getCode()).orElseThrow(() -> new ResourceNotFoundException(
+                                    "Product not found: " + itemDto.getCode()));
+
+                    System.out.println(product.getName());
+                    // Create ItemDetail
+                    ItemDetail item= ItemDetail.builder()
+                            .itemDetailId(UUID.randomUUID().toString())
+                            .qty(itemDto.getQty())
+                            .unitPrice(itemDto.getUnitPrice())
+                            .product(product)
+                            .orderDetail(orderDetail)
+                            .build();
+                    itemDetailRepo.save(item);
+                });
+    }
+
+    @Override
+    public void updateOrder(OrderDetailDto dto, String id) {
+        Optional<OrderDetail> selectedOrder = orderDetailRepo.findOrderById(String.valueOf(Long.parseLong(id)));
+        if (selectedOrder.isEmpty()) throw new RuntimeException();
+        selectedOrder.get().setOperatorEmail(dto.getOperatorEmail());
+        selectedOrder.get().setTotalCost(dto.getTotalCost());
+    }
+
+    @Override
+    public void deleteOrder(String id) {
+        Optional<OrderDetail> selectedOrder = orderDetailRepo.findOrderById(id);
+        if (selectedOrder.isEmpty()) throw new RuntimeException();
+        itemDetailRepo.deleteByOrderDetailOrderId(id);
+        orderDetailRepo.delete(selectedOrder.get());
+    }
+
+    @Override
+    public Set<OrderDetailDto> findAllOrders() {
+        return orderDetailRepo.findAll().stream()
+                .map(this::toResponseOrderDto)
+                .collect(Collectors.toSet());
+    }
+
+    private OrderDetailDto toResponseOrderDto(OrderDetail orderDetail) {
+        List<ItemDetail> itemDetails = itemDetailRepo.findByOrderDetailOrderId(orderDetail.getOrderId());
+//        System.out.println(orderDetail.getOrderId());
+//        System.out.println(itemDetails);
+        return OrderDetailDto.builder()
+                .orderId(orderDetail.getOrderId())
+                .totalCost(orderDetail.getTotalCost())
+                .discount(orderDetail.getDiscount())
+                .operatorEmail(orderDetail.getOperatorEmail())
+                .userId(orderDetail.getOrderId())
+               // .orderItems(itemDetails)
+                .build();
+    }
 }

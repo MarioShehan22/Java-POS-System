@@ -1,33 +1,39 @@
 package com.pos.system.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import lombok.*;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 public class OrderDetail{
     @Id
-    private int orderId;
-    private Date issuedDate;
+    private String orderId;
     private double totalCost;
-    private String customerEmail;
     private double discount;
     private String operatorEmail;
 
-    @ManyToMany
-    @JoinTable(name = "product_orderDetail",
-            joinColumns = @JoinColumn(name = "orderId"),
-            inverseJoinColumns =   @JoinColumn(name = "code")
-    )
-    private Set<ProductDetail> productDetail =new HashSet<>();
+    @OneToMany(mappedBy = "orderDetail", cascade = CascadeType.ALL)
+    private List<ItemDetail> itemDetails;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
+    @Column(updatable = false)
+    private LocalDateTime issuedDate;
+
+    @PrePersist
+    protected void onCreate() {
+        issuedDate = LocalDateTime.now();
+    }
 }

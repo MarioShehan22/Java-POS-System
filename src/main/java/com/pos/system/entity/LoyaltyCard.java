@@ -21,6 +21,7 @@ public class LoyaltyCard {
     private CardType cardType;
     private String barcode;
     private String email;
+
     @OneToOne
     @JoinColumn(name = "customer", unique = true)
     private Customer customer;

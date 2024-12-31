@@ -1,13 +1,15 @@
 package com.pos.system.entity;
 
 import jakarta.annotation.Nullable;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @AllArgsConstructor
@@ -25,4 +27,15 @@ public class Customer{
     @OneToOne(mappedBy = "customer")
     @Nullable
     private LoyaltyCard loyaltyCard;
+
+    @OneToMany(mappedBy = "customer")
+    private List<OrderDetail> orderDetail = new ArrayList<>();
+
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

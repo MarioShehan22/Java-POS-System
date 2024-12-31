@@ -1,15 +1,12 @@
 package com.pos.system.service.impl;
 
 import com.pos.system.dto.ProductDto;
-import com.pos.system.entity.Customer;
 import com.pos.system.entity.Product;
 import com.pos.system.repo.ProductRepo;
 import com.pos.system.service.ProductService;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -17,36 +14,45 @@ import java.util.UUID;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
    private final ProductRepo productRepo;
-
-    @Autowired
-    public ProductServiceImpl(ProductRepo productRepo) {
-        this.productRepo = productRepo;
-    }
 
     @Override
     public void saveProduct(ProductDto dto){
         Product product = new Product();
         UUID uuid = UUID.randomUUID();
-        long customerId = uuid.getMostSignificantBits();
+        long id = uuid.getMostSignificantBits();
+
+        product.setCode(String.valueOf(id));
+        product.setName(dto.getName());
+        product.setBuyingPrice(dto.getBuyingPrice());
+        product.setSellingPrice(dto.getSellingPrice());
+        product.setShowPrice(dto.getShowPrice());
+        product.setQtyOnHand(dto.getQtyOnHand());
+        product.setDiscountAvailability(dto.isDiscountAvailability());
         product.setDescription(dto.getDescription());
-        product.setCode((int) customerId);
         productRepo.save(product);
     }
 
     @Override
     public void updateProduct(ProductDto dto, String id) {
-        Optional<Product> selectedProduct = productRepo.getLastProductId(Long.parseLong(id));
+        Optional<Product> selectedProduct = productRepo.getLastProductId(String.valueOf(Long.parseLong(id)));
         if (selectedProduct.isEmpty()) throw new RuntimeException();
-        selectedProduct.get().setCode(Integer.parseInt(id));
+        selectedProduct.get().setCode(String.valueOf(Integer.parseInt(id)));
+        selectedProduct.get().setName(dto.getName());
         selectedProduct.get().setDescription(dto.getDescription());
+        selectedProduct.get().setDiscountAvailability(dto.isDiscountAvailability());
+        selectedProduct.get().setQtyOnHand(dto.getQtyOnHand());
+        selectedProduct.get().setSellingPrice(dto.getSellingPrice());
+        selectedProduct.get().setShowPrice(dto.getShowPrice());
+        selectedProduct.get().setBuyingPrice(dto.getBuyingPrice());
         productRepo.save(selectedProduct.get());
     }
 
     @Override
     public void deleteProduct(long id) {
-        Optional<Product> selectedProduct = productRepo.getLastProductId(id);
+        Optional<Product> selectedProduct = productRepo.getLastProductId(String.valueOf(id));
         if (selectedProduct.isEmpty()) throw new RuntimeException();
         productRepo.delete(selectedProduct.get());
     }
@@ -55,7 +61,16 @@ public class ProductServiceImpl implements ProductService {
     public List<ProductDto> findAllProducts(){
         List<ProductDto> dtos = new ArrayList<>();
         for (Product p : productRepo.findAll()) {
-            dtos.add(new ProductDto(p.getCode(), p.getDescription()));
+            ProductDto productDto = new ProductDto();
+            productDto.setCode(p.getCode());
+            productDto.setName(p.getName());
+            productDto.setDescription(p.getDescription());
+            productDto.setDiscountAvailability(p.isDiscountAvailability());
+            productDto.setQtyOnHand(p.getQtyOnHand());
+            productDto.setSellingPrice(p.getSellingPrice());
+            productDto.setShowPrice(p.getShowPrice());
+            productDto.setBuyingPrice(p.getBuyingPrice());
+            dtos.add(productDto);
         }
         return dtos;
     }

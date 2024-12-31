@@ -1,22 +1,41 @@
 package com.pos.system.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
 
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 public class ItemDetail {
     @Id
-    private String detailCode;
-    private int order;
+    private String itemDetailId;
+
     private int qty;
+
     private double discount;
-    private double amount;
+
+    @ManyToOne
+    @JoinColumn(name = "orderId", nullable = false)
+    private OrderDetail orderDetail;
+
+    @ManyToOne
+    @JoinColumn(name = "productId", nullable = false)
+    private Product product;
+
+    @Column(nullable = false)
+    private BigDecimal amount;
+
+    @Column(nullable = false)
+    private BigDecimal unitPrice;
+
+    @PrePersist
+    @PreUpdate
+    protected void calculateSubtotal() {
+        this.amount = this.unitPrice.multiply(BigDecimal.valueOf(this.qty));
+    }
 }

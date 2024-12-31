@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface CustomerRepo extends JpaRepository<Customer, Long> {
+public interface CustomerRepo extends JpaRepository<Customer, String> {
     @Query("SELECT c FROM Customer c WHERE c.name LIKE %?1%")
             List<Customer> findByNameContaining(String name);
 

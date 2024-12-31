@@ -1,8 +1,8 @@
 package com.pos.system.dto;
 
+import com.pos.system.entity.ItemDetail;
 import lombok.*;
 
-import java.util.Date;
 import java.util.List;
 
 @Getter
@@ -10,13 +10,14 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@Builder
 public class OrderDetailDto {
-    private int code;
-    private Date issuedDate;
+    private String orderId;
     private double totalCost;
-    private String customerEmail;
     private double discount;
     private String operatorEmail;
 
-    private List<ItemDetailDto> itemDetailDto;
+    private List<ItemDetailDto> orderItems;
+    private String userId;
+    private String customer;
 }
